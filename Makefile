@@ -67,7 +67,7 @@ LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
 OBJDUMP = $(TOOLPREFIX)objdump
 
-CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb
+CFLAGS = -Wall -Werror -O -fno-omit-frame-pointer -ggdb 
 
 ifdef LAB
 LABUPPER = $(shell echo $(LAB) | tr a-z A-Z)
@@ -133,6 +133,8 @@ mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
 .PRECIOUS: %.o
 
 UPROGS=\
+        $U/_sysinfotest\
+        $U/_trace\
 	$U/_cat\
 	$U/_echo\
 	$U/_forktest\
@@ -296,5 +298,7 @@ myapi.key:
 		false; \
 	fi;
 
+gdb:
+		riscv64-unknown-elf-gdb kernel/kernel
 
 .PHONY: handin tarball tarball-pref clean grade handin-check
