@@ -7,6 +7,7 @@
 #include "defs.h"
 #include "elf.h"
 
+
 static int loadseg(pde_t *pgdir, uint64 addr, struct inode *ip, uint offset, uint sz);
 
 int
@@ -19,6 +20,7 @@ exec(char *path, char **argv)
   struct inode *ip;
   struct proghdr ph;
   pagetable_t pagetable = 0, oldpagetable;
+  pagetable_t k_pagetable=0, oldk_pagetable;
   struct proc *p = myproc();
 
   begin_op();
@@ -37,8 +39,7 @@ exec(char *path, char **argv)
 
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
-
-  // Load program into memory.
+    // Load program into memory.
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -96,7 +97,8 @@ exec(char *path, char **argv)
     goto bad;
   if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
     goto bad;
-
+  
+  
   // arguments to user main(argc, argv)
   // argc is returned via the system call return
   // value, which goes in a0.
@@ -107,7 +109,8 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(p->name, last, sizeof(p->name));
-    
+  
+   
   // Commit to the user image.
   oldpagetable = p->pagetable;
   p->pagetable = pagetable;
@@ -115,7 +118,29 @@ exec(char *path, char **argv)
   p->trapframe->epc = elf.entry;  // initial program counter = main
   p->trapframe->sp = sp; // initial stack pointer
   proc_freepagetable(oldpagetable, oldsz);
+// Get the kernel pagetable clone version
+  // map the process kernel stack 
+  if((k_pagetable=kvmclone())==0)
+    goto bad;
+  uint64 stack_pa=kvmpa(p->kstack);
+  if(mappages(k_pagetable, p->kstack, PGSIZE, stack_pa, PTE_R|PTE_W) != 0)
+    panic("exec:map stack");
+  if(sz>PLIC||uvmkcopy(pagetable,k_pagetable,0, sz) < 0)
+    goto bad;
+  oldk_pagetable=p->k_pagetable;
+  p->k_pagetable=k_pagetable;
 
+
+
+  w_satp(MAKE_SATP(p->k_pagetable));
+  sfence_vma();
+  pagefree(oldk_pagetable);
+  // Copy pagetable to k_pagetable
+  //Test vmprint
+  if(p->pid==1){
+	vmprint(p->pagetable,1);
+	//vmprint_userspace(p->k_pagetable,1);
+  }
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:

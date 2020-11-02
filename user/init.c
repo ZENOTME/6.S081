@@ -24,6 +24,9 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
+  //Test
+
+
   for(;;){
     printf("init: starting sh\n");
     pid = fork();

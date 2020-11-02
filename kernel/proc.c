@@ -120,6 +120,19 @@ found:
     release(&p->lock);
     return 0;
   }
+  // Get the kernel pagetable clone version
+  // map the process kernel stack 
+  p->k_pagetable=kvmclone();
+  if(p->pagetable == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+  uint64 stack_pa=kvmpa(p->kstack);
+  uint64 stack_va = KSTACK((int) (p - proc));
+  if(mappages(p->k_pagetable, stack_va, PGSIZE, stack_pa, PTE_R|PTE_W) != 0)
+    panic("kvmmap");
+
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -141,6 +154,8 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  if(p->k_pagetable)
+    pagefree(p->k_pagetable);
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -220,6 +235,10 @@ userinit(void)
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
+  
+  // Map user memory to kernel_pagetable
+  uvmkcopy(p->pagetable, p->k_pagetable,0, p->sz);
+  
 
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
@@ -243,6 +262,8 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
+    if(sz+n>PLIC)
+      return -1;
     if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
       return -1;
     }
@@ -274,6 +295,12 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  // Map user memory to kernel_pagetable
+  if(np->sz>PLIC||uvmkcopy(np->pagetable, np->k_pagetable,0, np->sz) < 0){
+    freeproc(np);
+    release(&np->lock);
+    return -1;
+  }
 
   np->parent = p;
 
@@ -473,6 +500,8 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+  	w_satp(MAKE_SATP(p->k_pagetable));
+  	sfence_vma();
         swtch(&c->context, &p->context);
 
         // Process is done running for now.
@@ -485,6 +514,7 @@ scheduler(void)
     }
 #if !defined (LAB_FS)
     if(found == 0) {
+      kvminithart();
       intr_on();
       asm volatile("wfi");
     }

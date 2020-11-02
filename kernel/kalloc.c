@@ -48,6 +48,7 @@ kfree(void *pa)
 {
   struct run *r;
 
+
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
@@ -78,5 +79,22 @@ kalloc(void)
 
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
+  //else
+  //  printf("kalloc fail\n");
   return (void*)r;
+}
+
+int
+knumfree(void){
+ struct run *r;
+ acquire(&kmem.lock);
+ r=kmem.freelist;
+ int i=0;
+ while(r){
+  r=r->next;
+  i++;
+ }
+ release(&kmem.lock);
+ return i;
+  
 }

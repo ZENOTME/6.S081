@@ -43,12 +43,42 @@ sys_sbrk(void)
 {
   int addr;
   int n;
-
+  struct proc *p = myproc();
+  	//Start
+	//printf("Start\n");
+	//vmprint_userspace(p->pagetable,1);
+	//vmprint_userspace(p->k_pagetable,1);
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
+  addr = p->sz;
+
+  //if(n==-77824){
+  //s  vmprint_userspace(p->pagetable,1);
+  //}
+
   if(growproc(n) < 0)
     return -1;
+  
+  //if(n==-77824){
+  //s  vmprint_userspace(p->pagetable,1);
+  //}
+	//printf("Grow n=%d old_sz=%d new_sz=%d\n",n,addr,p->sz);
+	//vmprint_userspace(p->pagetable,1);
+  // Map user memory to kernel_pagetable
+  //if(n==-77824){
+  //  vmprint_userspace(p->k_pagetable,1);
+  //}
+  if(p->sz>PLIC||uvmkcopy(p->pagetable, p->k_pagetable,addr,n) < 0){
+    release(&p->lock);
+    return -1;
+  }
+  //if(n==-77824){
+  //  vmprint_userspace(p->k_pagetable,1);
+  //}
+  	//End
+	//printf("End\n");
+	//vmprint_userspace(p->pagetable,1);
+	//vmprint_userspace(p->k_pagetable,1);
   return addr;
 }
 

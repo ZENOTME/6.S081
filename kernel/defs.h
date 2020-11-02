@@ -26,6 +26,10 @@ void            consoleinit(void);
 void            consoleintr(int);
 void            consputc(int);
 
+//vmcopyin.c
+int             copyin_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len);
+int             copyinstr_new(pagetable_t pagetable, char *dst, uint64 srcva, uint64 max);
+
 // exec.c
 int             exec(char*, char**);
 
@@ -67,6 +71,7 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+int             knumfree(void);
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -160,9 +165,11 @@ int             uartgetc(void);
 // vm.c
 void            kvminit(void);
 void            kvminithart(void);
+pagetable_t     kvmclone(void);
 uint64          kvmpa(uint64);
 void            kvmmap(uint64, uint64, uint64, int);
 int             mappages(pagetable_t, uint64, uint64, uint64, int);
+void            pagefree(pagetable_t pagetable);
 pagetable_t     uvmcreate(void);
 void            uvminit(pagetable_t, uchar *, uint);
 uint64          uvmalloc(pagetable_t, uint64, uint64);
@@ -170,15 +177,21 @@ uint64          uvmdealloc(pagetable_t, uint64, uint64);
 #ifdef SOL_COW
 #else
 int             uvmcopy(pagetable_t, pagetable_t, uint64);
+int             uvmkcopy(pagetable_t , pagetable_t ,uint64 ,int);
+int             uvmkunmap(pagetable_t pagetable, uint64 va,int);
 #endif
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);
+void            uvmclear_range(pagetable_t pagetable,uint64 begin,uint64 end);
 uint64          walkaddr(pagetable_t, uint64);
 int             copyout(pagetable_t, uint64, char *, uint64);
 int             copyin(pagetable_t, char *, uint64, uint64);
 int             copyinstr(pagetable_t, char *, uint64, uint64);
-
+void 		vmprint(pagetable_t,int);
+void 		vmprint_userspace(pagetable_t,int);
+void            vmprint_page(pagetable_t ,int,int );
+void            vmprint_va(uint64 va);
 // plic.c
 void            plicinit(void);
 void            plicinithart(void);
@@ -222,4 +235,6 @@ void            sockclose(struct sock *);
 int             sockread(struct sock *, uint64, int);
 int             sockwrite(struct sock *, uint64, int);
 void            sockrecvudp(struct mbuf*, uint32, uint16, uint16);
+
+
 #endif
