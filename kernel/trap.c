@@ -67,7 +67,21 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  } else if(r_scause()==15||r_scause()==13){
+    uint64 addr=r_stval();
+    if(addr<p->sz){
+      //printf("lazyalloc\n");
+      if(uvmalloc_lazy(p->pagetable,addr)==0){
+         printf("lazy alloc fail:usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+         printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+         p->killed = 1;
+      }
+    }else{
+      printf("out of mem:usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+      p->killed = 1;
+    }
+  } else{
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
