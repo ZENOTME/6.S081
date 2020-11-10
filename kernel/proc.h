@@ -80,11 +80,20 @@ struct trapframe {
   /* 280 */ uint64 t6;
 };
 
+
 enum procstate { UNUSED, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
   struct spinlock lock;
+
+  // proc ticks regard
+  int timer_flag;
+  int timer_tar_ticks;
+  int timer_cur_ticks;
+  int timer_handle_flag;
+  uint64 timer_handle;
+
 
   // p->lock must be held when using these:
   enum procstate state;        // Process state
@@ -99,6 +108,7 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
+  struct trapframe *clone_trapframe;
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory

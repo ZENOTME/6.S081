@@ -66,7 +66,7 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+   // ok
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
@@ -77,8 +77,53 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+     if(p->timer_flag&&p->timer_handle_flag==0){
+	p->timer_cur_ticks++;
+	if(p->timer_cur_ticks==p->timer_tar_ticks){
+	    //change to handle pc and preserve reg
+	    p->timer_handle_flag=1;
+	    p->clone_trapframe->ra=p->trapframe->ra;
+	    p->clone_trapframe->sp=p->trapframe->sp;
+	    p->clone_trapframe->gp=p->trapframe->gp;
+	    p->clone_trapframe->tp=p->trapframe->tp;
+	    p->clone_trapframe->t0=p->trapframe->t0;
+	    p->clone_trapframe->t1=p->trapframe->t1;
+	    p->clone_trapframe->t2=p->trapframe->t2;
+	    p->clone_trapframe->a0=p->trapframe->a0;
+	    p->clone_trapframe->a1=p->trapframe->a1;
+	    p->clone_trapframe->a2=p->trapframe->a2;
+	    p->clone_trapframe->a3=p->trapframe->a3;
+	    p->clone_trapframe->a4=p->trapframe->a4;
+	    p->clone_trapframe->a5=p->trapframe->a5;
+	    p->clone_trapframe->a6=p->trapframe->a6;
+	    p->clone_trapframe->a7=p->trapframe->a7;
+	    p->clone_trapframe->t3=p->trapframe->t3;
+	    p->clone_trapframe->t4=p->trapframe->t4;
+	    p->clone_trapframe->t5=p->trapframe->t5;
+	    p->clone_trapframe->t6=p->trapframe->t6;
+	    p->clone_trapframe->s0=p->trapframe->s0;
+	    p->clone_trapframe->s1=p->trapframe->s1;
+	    p->clone_trapframe->s2=p->trapframe->s2;
+	    p->clone_trapframe->s3=p->trapframe->s3;
+	    p->clone_trapframe->s4=p->trapframe->s4;
+	    p->clone_trapframe->s5=p->trapframe->s5;
+	    p->clone_trapframe->s6=p->trapframe->s6;
+	    p->clone_trapframe->s7=p->trapframe->s7;
+	    p->clone_trapframe->s8=p->trapframe->s8;
+	    p->clone_trapframe->s9=p->trapframe->s9;
+	    p->clone_trapframe->s10=p->trapframe->s10;
+	    p->clone_trapframe->s11=p->trapframe->s11;
+	    p->clone_trapframe->epc=p->trapframe->epc;
+	    p->trapframe->epc=p->timer_handle;
+#ifdef DEBUG
+	    printf("time done:%d\n",p->timer_cur_ticks);
+#endif
+	    p->timer_cur_ticks=0;
+	}
+     }
     yield();
+  }
 
   usertrapret();
 }

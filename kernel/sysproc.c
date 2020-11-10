@@ -70,6 +70,7 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -94,4 +95,68 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64 
+sys_sigreturn(void)
+{
+	struct proc *p=myproc();
+	p->trapframe->ra=p->clone_trapframe->ra;
+	p->trapframe->sp=p->clone_trapframe->sp;
+	p->trapframe->gp=p->clone_trapframe->gp;
+	p->trapframe->tp=p->clone_trapframe->tp;
+	p->trapframe->t0=p->clone_trapframe->t0;
+	p->trapframe->t1=p->clone_trapframe->t1;
+	p->trapframe->t2=p->clone_trapframe->t2;
+	p->trapframe->a0=p->clone_trapframe->a0;
+	p->trapframe->a1=p->clone_trapframe->a1;
+	p->trapframe->a2=p->clone_trapframe->a2;
+	p->trapframe->a3=p->clone_trapframe->a3;
+	p->trapframe->a4=p->clone_trapframe->a4;
+	p->trapframe->a5=p->clone_trapframe->a5;
+	p->trapframe->a6=p->clone_trapframe->a6;
+	p->trapframe->a7=p->clone_trapframe->a7;
+	p->trapframe->t3=p->clone_trapframe->t3;
+	p->trapframe->t4=p->clone_trapframe->t4;
+	p->trapframe->t5=p->clone_trapframe->t5;
+	p->trapframe->t6=p->clone_trapframe->t6;
+	p->trapframe->s0=p->clone_trapframe->s0;
+	p->trapframe->s1=p->clone_trapframe->s1;
+	p->trapframe->s2=p->clone_trapframe->s2;
+	p->trapframe->s3=p->clone_trapframe->s3;
+	p->trapframe->s4=p->clone_trapframe->s4;
+	p->trapframe->s5=p->clone_trapframe->s5;
+	p->trapframe->s6=p->clone_trapframe->s6;
+	p->trapframe->s7=p->clone_trapframe->s7;
+	p->trapframe->s8=p->clone_trapframe->s8;
+	p->trapframe->s9=p->clone_trapframe->s9;
+	p->trapframe->s10=p->clone_trapframe->s10;
+	p->trapframe->s11=p->clone_trapframe->s11;
+	p->trapframe->epc=p->clone_trapframe->epc;
+        p->timer_handle_flag=0;       
+	return 0;
+}
+
+uint64
+sys_sigalarm(void)
+{
+	int ticks=0;
+	uint64 handler_addr=0;
+	if(argint(0,&ticks)<0)
+	  return -1;
+	if(argaddr(1,&handler_addr)<0)
+	  return -1;
+	if(ticks==0){
+		myproc()->timer_flag=0;
+		return 0;
+	}
+	myproc()->timer_flag=1;
+	myproc()->timer_cur_ticks=0;
+	myproc()->timer_tar_ticks=ticks;
+	myproc()->timer_handle=handler_addr;
+#ifdef DEBUG
+	printf("Initial Successful\n");
+#endif
+	
+	return 0;
 }

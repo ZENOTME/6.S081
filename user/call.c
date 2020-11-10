@@ -16,3 +16,4 @@ void main(void) {
   printf("H%x,Wo%s\n",57616,&i);
   printf("%d %d\n", f(8)+1, 13);
   printf("x=%d y=%d",3);
+}
