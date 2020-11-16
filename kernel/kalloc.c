@@ -49,7 +49,7 @@ init_kfree(void *pa)
   struct run *r;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
-    panic("kfree");
+    panic("init kfree");
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
@@ -72,8 +72,12 @@ kfree(void *pa)
 {
   struct run *r;
 
-  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
-    panic("kfree");
+  if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP){
+#ifdef DEBUG
+	printf("pa:%p pa%PGSIZE:%d  end:%p PHYSTOP:%p",(uint64)pa,(uint64)pa % PGSIZE,end,PHYSTOP);
+#endif
+	panic("kfree");
+  }
   
   acquire(&kmem.lock);
   if(cow_refercount[((uint64)pa-(uint64)end)/4096]>1){
@@ -130,4 +134,15 @@ kbind(void *pa){
   cow_refercount[index]++;
   release(&kmem.lock);
 
+}
+
+int
+cow_count(void *pa){
+	int index,res;
+	if((index=((uint64)pa-(uint64)end)/4096)<0)
+		return -1;
+	acquire(&kmem.lock);
+	res=cow_refercount[index];
+	release(&kmem.lock);
+	return res;
 }

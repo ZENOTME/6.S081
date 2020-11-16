@@ -41,15 +41,10 @@ kvminit()
 
   // map kernel data and the physical RAM we'll make use of.
   kvmmap((uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
-#ifdef DEBUG
-  printf("etext:%p to %p\n",etext, etext+PHYSTOP-(uint64)etext);
-#endif
+  
   // map the trampoline for trap entry/exit to
   // the highest virtual address in the kernel.
   kvmmap(TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
-#ifdef DEBUG
-  printf("trampoline:%p to %p\n",trampoline, trampoline+PGSIZE);
-#endif
 }
 
 // Switch h/w page table register to the kernel's page table,
@@ -316,7 +311,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -324,12 +318,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
+	*pte&=~PTE_W;
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+	kbind((void *)pa);
+    if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
+      kfree((void *)pa);
       goto err;
     }
   }
@@ -369,6 +362,34 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
+	//if need to cow?
+	int count=cow_count((void *)pa0);
+	if(count<=0)panic("copyout error");
+	if(count>1){
+		//COW
+		char *mem;
+		pte_t* pte;
+		uint flags;
+		//1.allocate new page
+		if((mem=kalloc())==0){
+  			printf("copyout():can't write\n");
+  			exit(-1);
+		}
+		memmove((void *)mem,(void *)pa0,PGSIZE);
+		//2.cache new flag
+		if((pte=walk(pagetable,va0,0))==0){
+  			printf("copyout():can't write\n");
+  			exit(-1);
+		}
+		flags=PTE_FLAGS(*pte)|PTE_W;
+		//3.free ori page
+		kfree((void *)pa0);
+		//4.set new page
+		*pte=PA2PTE((uint64)mem)|flags;
+		pa0=(uint64)mem;
+	}
+	
+	
     memmove((void *)(pa0 + (dstva - va0)), src, n);
 
     len -= n;
@@ -376,6 +397,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     dstva = va0 + PGSIZE;
   }
   return 0;
+
 }
 
 // Copy from user to kernel.
