@@ -41,10 +41,15 @@ kvminit()
 
   // map kernel data and the physical RAM we'll make use of.
   kvmmap((uint64)etext, (uint64)etext, PHYSTOP-(uint64)etext, PTE_R | PTE_W);
-
+#ifdef DEBUG
+  printf("etext:%p to %p\n",etext, etext+PHYSTOP-(uint64)etext);
+#endif
   // map the trampoline for trap entry/exit to
   // the highest virtual address in the kernel.
   kvmmap(TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
+#ifdef DEBUG
+  printf("trampoline:%p to %p\n",trampoline, trampoline+PGSIZE);
+#endif
 }
 
 // Switch h/w page table register to the kernel's page table,

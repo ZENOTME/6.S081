@@ -2604,14 +2604,13 @@ countfree()
 
       // modify the memory to make sure it's really allocated.
       *(char *)(a + 4096 - 1) = 1;
-
+	
       // report back one more page.
       if(write(fds[1], "x", 1) != 1){
         printf("write() failed in countfree()\n");
         exit(1);
       }
     }
-
     exit(0);
   }
 
