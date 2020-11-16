@@ -246,7 +246,12 @@ growproc(int n)
     //if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
     //  return -1;
     //}
-    p->sz+=n;
+    if(p->sz+n<MAXVA){
+      p->sz+=n;
+    }
+    else{
+      return -1;
+    }
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
     p->sz = sz;
@@ -275,11 +280,12 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
-
+  np->stackbase=p->stackbase;
   np->parent = p;
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
+  
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;

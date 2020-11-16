@@ -69,22 +69,18 @@ usertrap(void)
     // ok
   } else if(r_scause()==15||r_scause()==13){
     uint64 addr=r_stval();
-    if(addr<p->sz){
-      //printf("lazyalloc\n");
+    if(addr<p->sz&&(addr>p->stackbase||addr<p->stackbase-PGSIZE)){
       if(uvmalloc_lazy(p->pagetable,addr)==0){
-         printf("lazy alloc fail:usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-         printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-         p->killed = 1;
+	printf("alloc sz error:\n");
+        goto bad;
       }
-    }else{
-      printf("out of mem:usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-      printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-      p->killed = 1;
+    }
+    else {
+      printf("out of sz or sp errro:\n");
+      goto bad;
     }
   } else{
-    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
-    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
-    p->killed = 1;
+    goto bad;
   }
 
   if(p->killed)
@@ -95,6 +91,11 @@ usertrap(void)
     yield();
 
   usertrapret();
+
+  bad:
+    printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
+    printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
+    exit(-1);
 }
 
 //

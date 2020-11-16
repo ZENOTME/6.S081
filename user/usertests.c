@@ -2231,6 +2231,7 @@ sbrkarg(char *s)
     printf("%s: open sbrk failed\n", s);
     exit(1);
   }
+  printf("addr:%p\n",a);
   if ((n = write(fd, a, PGSIZE)) < 0) {
     printf("%s: write sbrk failed\n", s);
     exit(1);
@@ -2604,7 +2605,7 @@ countfree()
       if(a == 0xffffffffffffffff){
         break;
       }
-
+	
       // modify the memory to make sure it's really allocated.
       *(char *)(a + 4096 - 1) = 1;
 
@@ -2684,6 +2685,7 @@ main(int argc, char *argv[])
   struct test {
     void (*f)(char *);
     char *s;
+
   } tests[] = {
     {execout, "execout"},
     {copyin, "copyin"},
