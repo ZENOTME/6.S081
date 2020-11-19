@@ -67,7 +67,7 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
-	if((r_scause()==13||r_scause()==15)&&r_stval()<p->sz){
+	if((r_scause()==13||r_scause()==15)&&r_stval()<p->sz&&(r_stval()>p->stackbase||r_stval()<p->stackbase-PGSIZE)){
 		uint64 vm_addr=PGROUNDDOWN(r_stval());
 		char *mem;
 		pte_t* pte;
