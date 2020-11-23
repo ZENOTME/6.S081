@@ -243,21 +243,23 @@ create(char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
-
+  //return parent dir inode
   if((dp = nameiparent(path, name)) == 0)
     return 0;
 
   ilock(dp);
-
+  //find if the target file/dev/dir in the parent dir
   if((ip = dirlookup(dp, name, 0)) != 0){
     iunlockput(dp);
+	//lock when find the file
     ilock(ip);
     if(type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
       return ip;
     iunlockput(ip);
     return 0;
   }
-
+  //if find no target file,start the create inode process
+  //alloc inode and dinode for new file.
   if((ip = ialloc(dp->dev, type)) == 0)
     panic("create: ialloc");
 
@@ -265,16 +267,24 @@ create(char *path, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
+  //update msg
+  //read dinode from cache or disk
+  //update dinode
+  //mark write back to the disk
   iupdate(ip);
 
+  //dp represent parent inode
+  //ip represent child  inode
   if(type == T_DIR){  // Create . and .. entries.
     dp->nlink++;  // for ".."
     iupdate(dp);
     // No ip->nlink++ for ".": avoid cyclic ref count.
+	// child inode link . and ..
     if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
       panic("create dots");
   }
 
+  //parent inode link child inode
   if(dirlink(dp, name, ip->inum) < 0)
     panic("create: dirlink");
 
@@ -295,16 +305,23 @@ sys_open(void)
   if((n = argstr(0, path, MAXPATH)) < 0 || argint(1, &omode) < 0)
     return -1;
 
+  //begin op called at the start of each FS system call
+  //wait for log commmit or log full
   begin_op();
-
+  //called at the end of each FS system call.
+  //commits if this was the last outstanding operation.
+  //end_op()
   if(omode & O_CREATE){
+	//create a new inode in current dir and link==1
+	//Q:how to remove this file?
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
       end_op();
       return -1;
     }
   } else {
-    if((ip = namei(path)) == 0){
+    //find the path
+	if((ip = namei(path)) == 0){
       end_op();
       return -1;
     }
@@ -315,13 +332,14 @@ sys_open(void)
       return -1;
     }
   }
-
+  //Q:?
   if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
     iunlockput(ip);
     end_op();
     return -1;
   }
-
+  //alloc file and file descriptor
+  //user use fd|fd->file|file->inode|
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
       fileclose(f);
@@ -386,7 +404,7 @@ sys_mknod(void)
   end_op();
   return 0;
 }
-
+ 
 uint64
 sys_chdir(void)
 {
@@ -454,6 +472,7 @@ sys_exec(void)
   return -1;
 }
 
+//create pipe
 uint64
 sys_pipe(void)
 {
@@ -464,9 +483,11 @@ sys_pipe(void)
 
   if(argaddr(0, &fdarray) < 0)
     return -1;
+  //alloc two file type
   if(pipealloc(&rf, &wf) < 0)
     return -1;
   fd0 = -1;
+  //alloc two file descriptor for two file 
   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
     if(fd0 >= 0)
       p->ofile[fd0] = 0;
