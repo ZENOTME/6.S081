@@ -395,7 +395,8 @@ sys_chdir(void)
   struct proc *p = myproc();
   
   begin_op();
-  if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
+  
+  if(argstr(0, path, MAXPATH) < 0 || (ip=namei(path)) == 0){
     end_op();
     return -1;
   }

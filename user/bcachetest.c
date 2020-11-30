@@ -5,7 +5,7 @@
 #include "kernel/riscv.h"
 #include "kernel/fs.h"
 #include "user/user.h"
-
+#define DEBUG
 void test0();
 void test1();
 
@@ -95,7 +95,10 @@ test0()
 
   printf("start test0\n");
   for(int i = 0; i < NCHILD; i++){
-    dir[0] = '0' + i;
+#ifdef DEBUG
+printf("create file%d\n",i);
+#endif
+	dir[0] = '0' + i;
     mkdir(dir);
     if (chdir(dir) < 0) {
       printf("chdir failed\n");
@@ -108,8 +111,12 @@ test0()
       exit(1);
     }
   }
+
   m = ntas(0);
   for(int i = 0; i < NCHILD; i++){
+#ifdef DEBUG
+printf("reaad file %d\n",i);
+#endif
     dir[0] = '0' + i;
     int pid = fork();
     if(pid < 0){
