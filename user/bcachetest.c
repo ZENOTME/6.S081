@@ -5,7 +5,7 @@
 #include "kernel/riscv.h"
 #include "kernel/fs.h"
 #include "user/user.h"
-#define DEBUG
+//#define DEBUG
 void test0();
 void test1();
 
